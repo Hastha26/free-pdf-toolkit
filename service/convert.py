@@ -13,8 +13,8 @@ def check_pdf(source):
     reader = PdfReader(source)
     if reader.is_encrypted:
         raise ValueError("Password-protected PDFs are not supported.")
-    if not 1 <= len(reader.pages) <= 100:
-        raise ValueError("Use a PDF with 1 to 100 pages.")
+    if not len(reader.pages):
+        raise ValueError("The PDF has no pages.")
     return reader
 
 

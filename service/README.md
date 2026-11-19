@@ -18,11 +18,11 @@ The browser's default converter URL is **http://127.0.0.1:8765**. Click **Check 
 - `powerpoint-pdf`: PPT/PPTX/ODP using LibreOffice.
 - `excel-pdf`: XLS/XLSX/ODS using LibreOffice's print layout.
 
-PDF input must be unencrypted and contain 1–100 pages. Scanned PDFs need OCR for Word/Excel/text-slide extraction; OCR is not included. Office fidelity depends on available fonts and LibreOffice support. Animations, macros, and external-link updates are not supported. Check output before relying on it.
+PDF input must be unencrypted and contain one or more pages. Scanned PDFs need OCR for Word/Excel/text-slide extraction; OCR is not included. Office fidelity depends on available fonts and LibreOffice support. Animations, macros, and external-link updates are not supported. Check output before relying on it.
 
 ## Resource and privacy boundaries
 
-The API streams at most 25 MB per request, runs one job at a time, allows a 60-second upload and 120-second conversion, and caps output at 50 MB. Temporary input, profiles, and outputs are removed before the response is returned, including on errors. Logs do not intentionally contain filenames or document contents. Downloads remain on the user's device. Deletion is not guaranteed forensic erasure.
+The API has no fixed file-count or byte quota by default. It runs up to three jobs at once, queues additional jobs, and allows a 60-second upload and 120-second conversion per file. Set MAX_CONCURRENT_JOBS, MAX_UPLOAD_BYTES, and MAX_OUTPUT_BYTES to tune resource use; zero byte limits disable those checks. Container memory, temporary storage, CPU, and time still set practical bounds. Temporary input, profiles, and outputs are removed before the response is returned, including on errors. Logs do not intentionally contain filenames or document contents. Downloads remain on the user's device. Deletion is not guaranteed forensic erasure.
 
 The converter is an unprivileged container with a read-only filesystem, a 512 MB temporary filesystem, a 1.5 GB memory limit, CPU/PID limits, no extra capabilities, and no outbound network. A separate loopback-bound nginx gateway exposes it to the browser. These controls reduce risk; they are not a claim that arbitrary hostile documents are safe. Keep the image and libraries updated.
 

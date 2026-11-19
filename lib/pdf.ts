@@ -3,9 +3,6 @@ import { zipSync } from "fflate";
 
 export type Tool = "merge" | "split" | "rotate" | "images";
 export type Input = { name: string; bytes: Uint8Array };
-export const MAX_BYTES = 100 * 1024 * 1024;
-export const MAX_FILES = 100;
-
 export function parsePages(value: string, count: number): number[] {
   if (!value.trim()) return Array.from({ length: count }, (_, i) => i);
   const pages = new Set<number>();
@@ -40,11 +37,6 @@ export async function processPdf(
   options: { pages?: string; angle?: number; separate?: boolean } = {},
 ) {
   if (!files.length) throw new Error("Choose at least one file.");
-  if (
-    files.length > MAX_FILES ||
-    files.reduce((n, f) => n + f.bytes.byteLength, 0) > MAX_BYTES
-  )
-    throw new Error("Use up to 100 files and 100 MB total per operation.");
   if ((tool === "split" || tool === "rotate") && files.length !== 1)
     throw new Error("Choose one PDF for this tool.");
   if (tool === "merge" && files.length < 2)

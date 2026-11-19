@@ -37,8 +37,6 @@ export async function convertOnService(
   key: string,
   mode: string,
 ) {
-  if (file.size > 25 * 1024 * 1024)
-    throw new Error("Service conversions accept files up to 25 MB.");
   const base = serviceUrl(endpoint);
   let response: Response;
   try {
@@ -51,7 +49,6 @@ export async function convertOnService(
           ...(key ? { "X-API-Key": key } : {}),
         },
         body: file,
-        signal: AbortSignal.timeout(150000),
         credentials: "omit",
         redirect: "error",
       },

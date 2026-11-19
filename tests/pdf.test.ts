@@ -98,10 +98,9 @@ describe("PDF operations", () => {
       processPdf("rotate", [await fixture()], { angle: 45 }),
     ).rejects.toThrow("90");
   });
-  it("rejects batches above the file-count guardrail", async () => {
+  it("merges more than 100 PDFs without an arbitrary file-count cap", async () => {
     const one = await fixture([200]);
-    await expect(processPdf("merge", Array(101).fill(one))).rejects.toThrow(
-      "100 files",
-    );
+    const result = await processPdf("merge", Array(101).fill(one));
+    expect((await PDFDocument.load(result.bytes)).getPageCount()).toBe(101);
   });
 });

@@ -62,16 +62,13 @@ export default function PdfEditor({
       .then(({ doc: d, dispose: release }) => {
         dispose = release;
         if (cancelled) return release();
-        if (d.numPages > 100) {
-          release();
-          throw new Error("The editor supports up to 100 pages.");
-        }
+
         setDoc(d);
       })
       .catch(() => {
         if (!cancelled)
           setError(
-            "Unable to open this PDF. Use a valid, unencrypted document with up to 100 pages.",
+            "Unable to open this PDF. Use a valid, unencrypted document ",
           );
       });
     return () => {

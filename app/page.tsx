@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import {
   FileText,
   Files,
+  CodeXml,
   Scissors,
   RotateCw,
   ImagePlus,
   ShieldCheck,
-  CodeXml,
   Upload,
   X,
   ChevronUp,
@@ -23,6 +23,23 @@ import { convertOnService, serviceUrl, type ServiceTool } from "@/lib/service";
 import dynamic from "next/dynamic";
 const PdfEditor = dynamic(() => import("./PdfEditor"), { ssr: false });
 
+async function runBatch<T>(
+  files: File[],
+  concurrency: number,
+  task: (file: File) => Promise<T>,
+): Promise<T[]> {
+  const results: T[] = Array(files.length);
+  let index = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, files.length) }, async () => {
+      while (index < files.length) {
+        const current = index++;
+        results[current] = await task(files[current]);
+      }
+    }),
+  );
+  return results;
+}
 export default function Home() {
   const [active, setActive] = useState<AppTool>("merge");
   const [endpoint, setEndpoint] = useState("http://127.0.0.1:8765");
@@ -74,22 +91,9 @@ export default function Home() {
       setError(`Choose a supported file: ${tool.accept}.`);
       return;
     }
-    const next =
-      active === "merge" || active === "images"
-        ? [...files, ...incoming]
-        : incoming;
-    if (active !== "merge" && active !== "images" && next.length > 1) {
+    const next = active === "edit" ? incoming : [...files, ...incoming];
+    if (active === "edit" && next.length > 1) {
       setError("This tool accepts one PDF at a time.");
-      return;
-    }
-    if (
-      next.length > 100 ||
-      next.reduce((n, f) => n + f.size, 0) >
-        (tool.service ? 25 : 100) * 1024 * 1024
-    ) {
-      setError(
-        `Choose up to ${tool.service ? "one file, 25" : "100 files, 100"} MB total or less.`,
-      );
       return;
     }
     setFiles(next);
@@ -112,17 +116,92 @@ export default function Home() {
           throw new Error(
             "Confirm sending this file to your conversion service first.",
           );
-        const output = await convertOnService(
-          active as ServiceTool,
-          files[0],
-          endpoint,
-          apiKey,
-          mode,
+        const { zipSync } = await import("fflate");
+        const results = await runBatch(files, 3, async (file) => {
+          try {
+            return {
+              output: await convertOnService(
+                active as ServiceTool,
+                file,
+                endpoint,
+                apiKey,
+                mode,
+              ),
+              error: "",
+            };
+          } catch (failure) {
+            return {
+              output: null,
+              error:
+                failure instanceof Error
+                  ? failure.message
+                  : "Conversion failed.",
+            };
+          }
+        });
+        const archive: Record<string, Uint8Array> = {};
+        const failures = results.flatMap((result, i) =>
+          result.error ? [`${files[i].name}: ${result.error}`] : [],
         );
-        setResult({ url: URL.createObjectURL(output.blob), name: output.name });
+        if (failures.length)
+          setError(
+            `${failures.length} file(s) failed. ${failures.slice(0, 3).join(" | ")}`,
+          );
+        const completed = results.flatMap((result) =>
+          result.output ? [result.output] : [],
+        );
+        if (!completed.length) return;
+        for (let i = 0; i < results.length; i++)
+          if (results[i].output) {
+            const output = results[i].output!;
+            archive[
+              `${String(i + 1).padStart(3, "0")}-${files[i].name.replace(/[^a-zA-Z0-9._-]/g, "_")}.${output.name.split(".").pop()}`
+            ] = new Uint8Array(await output.blob.arrayBuffer());
+          }
+        const blob =
+          files.length === 1
+            ? completed[0].blob
+            : new Blob([new Uint8Array(zipSync(archive, { level: 0 }))], {
+                type: "application/zip",
+              });
+        setResult({
+          url: URL.createObjectURL(blob),
+          name:
+            files.length === 1
+              ? completed[0].name
+              : `paperfree-${active}-batch.zip`,
+        });
         return;
       }
       const { processPdf } = await import("@/lib/pdf");
+      if ((active === "split" || active === "rotate") && files.length > 1) {
+        const { zipSync } = await import("fflate");
+        const archive: Record<string, Uint8Array> = {};
+        for (let i = 0; i < files.length; i++) {
+          const processed = await processPdf(
+            active as Tool,
+            [
+              {
+                name: files[i].name,
+                bytes: new Uint8Array(await files[i].arrayBuffer()),
+              },
+            ],
+            { pages, angle, separate },
+          );
+          archive[
+            `${String(i + 1).padStart(3, "0")}-${files[i].name.replace(/[^a-zA-Z0-9._-]/g, "_")}.${processed.name.split(".").pop()}`
+          ] = new Uint8Array(processed.bytes);
+        }
+        setResult({
+          url: URL.createObjectURL(
+            new Blob([new Uint8Array(zipSync(archive, { level: 0 }))], {
+              type: "application/zip",
+            }),
+          ),
+          name: `paperfree-${active}-batch.zip`,
+        });
+        return;
+      }
       const data = await Promise.all(
         files.map(async (f) => ({
           name: f.name,
@@ -181,12 +260,6 @@ export default function Home() {
             </div>
           </details>
           <a href="#privacy">Your privacy</a>
-          <a
-            className="github"
-            href="https://github.com/Hastha26/free-pdf-toolkit"
-          >
-            <CodeXml size={17} /> <span>Open source</span>
-          </a>
         </nav>
       </header>
       <main>
@@ -365,7 +438,7 @@ export default function Home() {
                   type="file"
                   aria-label="Choose files"
                   accept={tool.accept}
-                  multiple={active === "merge" || active === "images"}
+                  multiple={active !== "edit"}
                   onChange={(e) => {
                     add(Array.from(e.target.files ?? []));
                     e.target.value = "";
@@ -374,8 +447,8 @@ export default function Home() {
                 />
                 <small>
                   {tool.service
-                    ? "Up to 25 MB · Sent only to the service you configure"
-                    : "Up to 100 MB total · Processed in your browser"}
+                    ? "Batch conversion · Sent only to the service you configure"
+                    : "No fixed file-count limit · Processed in your browser"}
                 </small>
               </div>
               {files.length > 0 && (
@@ -525,7 +598,7 @@ export default function Home() {
                           disabled={busy}
                           onChange={(e) => setConsent(e.target.checked)}
                         />
-                        Send this file to {endpoint} for conversion.
+                        Send these files to {endpoint} for conversion.
                       </label>
                     </>
                   )}
@@ -638,9 +711,9 @@ export default function Home() {
             <div>
               <b>Free, with practical limits</b>
               <p>
-                Local tools accept up to 100 MB. The service accepts 25 MB, up
-                to 100 PDF pages, and one job at a time with a two-minute
-                conversion timeout.
+                Select as many files as your device and server can handle. Batch
+                conversions run concurrently; very large jobs can still fail if
+                memory or time runs out.
               </p>
             </div>
             <div>

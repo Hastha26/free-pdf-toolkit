@@ -40,7 +40,7 @@ Stop the converter with `docker compose down`. See [service setup and limits](se
 - Merge/split/rotate/images/edit process files inside the browser. No document upload occurs for these tools.
 - Compression and Office conversions upload only to your configured self-hosted service after explicit confirmation. The supplied service deletes temporary files before responding. Other server operators may use different policies.
 - Service URL and optional API key are held in this tab's memory, not browser storage. No analytics, external fonts, or paid conversion APIs are included. The app host still receives ordinary page requests.
-- Local operations: up to 100 files / 100 MB; editor: one PDF, at most 100 pages. Service: one file / 25 MB, up to 100 PDF pages, one job at a time, 120-second conversion timeout, 50 MB output. Large/complex files can exceed practical memory limits.
+- Local tools and batch conversion have no fixed file-count limit. A batch of service outputs downloads as a ZIP. Up to three conversion jobs run at once by default; additional jobs wait. The editor handles one PDF at a time. Device memory, server memory, temporary storage, and per-file timeouts still impose practical bounds.
 - The editor uses Mozilla PDF.js assets hosted with the app. It does not execute PDF JavaScript. Password-protected PDFs are unsupported.
 - This app is not a malware scanner or sanitizer. Links, attachments, or active content may remain. Page copying can lose bookmarks, form behavior, tags, or other document-level information.
 - OCR, password removal, advanced lossy compression, and secure redaction are not included.

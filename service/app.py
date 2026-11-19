@@ -12,8 +12,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-MAX_BYTES = 25 * 1024 * 1024
-MAX_OUTPUT = 50 * 1024 * 1024
+MAX_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", "0"))
+MAX_OUTPUT = int(os.getenv("MAX_OUTPUT_BYTES", "0"))
 TIMEOUT = 120
 TOOLS = {
     "compress": ({".pdf"}, "pdf", "application/pdf"),
@@ -27,7 +27,7 @@ TOOLS = {
 ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 app = FastAPI(title="Paperfree conversion service", docs_url=None, redoc_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["GET", "POST"], allow_headers=["Content-Type", "X-API-Key"], expose_headers=["Content-Disposition"])
-gate = asyncio.Lock()
+gate = asyncio.Semaphore(max(1, int(os.getenv("MAX_CONCURRENT_JOBS", "3"))))
 
 
 def office_available():
@@ -50,7 +50,7 @@ async def protect(request: Request, call_next):
 
 @app.get("/health")
 def health():
-    return {"service": "paperfree", "status": "ok", "office": office_available(), "maxBytes": MAX_BYTES, "maxPages": 100}
+    return {"service": "paperfree", "status": "ok", "office": office_available(), "maxBytes": MAX_BYTES, "maxConcurrentJobs": max(1, int(os.getenv("MAX_CONCURRENT_JOBS", "3")))}
 
 
 async def run_worker(tool: str, source: Path, target: Path, mode: str):
@@ -87,8 +87,6 @@ async def convert(tool: str, request: Request, filename: str = "", mode: str = "
         raise HTTPException(400, "Unsupported conversion mode")
     if tool.endswith("-pdf") and not office_available():
         raise HTTPException(503, "LibreOffice is not installed on this service. Start the supplied Docker service.")
-    if gate.locked():
-        raise HTTPException(429, "The converter is busy. Please try again shortly.")
     async with gate:
         with tempfile.TemporaryDirectory(prefix="paperfree-") as folder:
             source = Path(folder) / ("input" + extension)
@@ -99,16 +97,16 @@ async def convert(tool: str, request: Request, filename: str = "", mode: str = "
                     async with asyncio.timeout(60):
                         async for chunk in request.stream():
                             total += len(chunk)
-                            if total > MAX_BYTES:
-                                raise HTTPException(413, "The conversion service accepts files up to 25 MB.")
+                            if MAX_BYTES and total > MAX_BYTES:
+                                raise HTTPException(413, "This file exceeds the configured service upload limit.")
                             stream.write(chunk)
                 except TimeoutError:
                     raise HTTPException(408, "Upload timed out")
             if total == 0:
                 raise HTTPException(400, "The file is empty")
             await run_worker(tool, source, target, mode)
-            if not target.exists() or target.stat().st_size > MAX_OUTPUT:
-                raise HTTPException(422, "Output is missing or exceeds the 50 MB output limit.")
+            if not target.exists() or (MAX_OUTPUT and target.stat().st_size > MAX_OUTPUT):
+                raise HTTPException(422, "Output is missing or exceeds the configured output limit.")
             # Read before leaving the context; all temporary files are deleted before responding.
             data = target.read_bytes()
         return Response(data, media_type=mime, headers={"Content-Disposition": f'attachment; filename="paperfree-{tool}.{output_ext}"'})
