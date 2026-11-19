@@ -1,28 +1,51 @@
 # Paperfree · Free PDF Toolkit
 
-A free, open-source PDF toolkit built with Next.js, TypeScript, and React. No accounts, document uploads, analytics, or paid feature gates. Independent project; not affiliated with iLovePDF.
+A free, open-source Next.js/TypeScript toolkit with **12 working tools**. Independent project; not affiliated with iLovePDF. No accounts or paid feature gates. Hosting and conversion resources are not unlimited.
 
-## MVP features
+## Tools and processing locations
 
-| Tool          | Behavior                                                                             |
-| ------------- | ------------------------------------------------------------------------------------ |
-| Merge PDF     | Combine PDFs in the displayed order; reorder or remove files first.                  |
-| Split PDF     | Extract selected pages into a PDF, or save individual pages in a ZIP.                |
-| Rotate PDF    | Rotate all or selected pages clockwise by 90, 180, or 270 degrees.                   |
-| Images to PDF | Place JPEG/PNG images on individual A4 pages with margins and automatic orientation. |
+| Tool              | Where it runs | Behavior                                                                        |
+| ----------------- | ------------- | ------------------------------------------------------------------------------- |
+| Merge PDF         | Browser       | Combine PDFs in the displayed order.                                            |
+| Split PDF         | Browser       | Extract pages or download individual pages in a ZIP.                            |
+| Rotate PDF        | Browser       | Rotate all or selected pages.                                                   |
+| Images to PDF     | Browser       | JPEG/PNG images on A4 pages.                                                    |
+| Edit PDF          | Browser       | Visual text, image, rectangle, and freehand overlays; undo and page navigation. |
+| Compress PDF      | Your service  | Lossless stream/object optimization; original returned if no saving.            |
+| PDF to Word       | Your service  | Editable text in DOCX with page breaks; no layout reconstruction or OCR.        |
+| PDF to PowerPoint | Your service  | Visual page-image slides, or simple editable text slides.                       |
+| PDF to Excel      | Your service  | Detected tables or text rows in XLSX; one sheet per page.                       |
+| Word to PDF       | Your service  | DOC, DOCX, ODT via LibreOffice.                                                 |
+| PowerPoint to PDF | Your service  | PPT, PPTX, ODP via LibreOffice.                                                 |
+| Excel to PDF      | Your service  | XLS, XLSX, ODS via LibreOffice.                                                 |
 
-Page selections use one-based numbers and inclusive ranges: `1, 3-5`. Blank means all pages. Requested order is preserved; duplicates are removed. The responsive interface supports drag-and-drop, keyboard controls, error feedback, and explicit downloads.
+PDF-to-Office is not a promise of perfect reconstruction. Fonts, complex layouts, tables, and scans need review. The editor adds annotations; it cannot rewrite existing text or securely redact it. Original page content stays intact; added annotations are raster overlays. Digital signatures can be invalidated. Keep originals.
 
-## Development
+## Start locally
 
-Requires Node.js 22.12+, 24+, or 26+ and npm. No API keys or environment variables needed.
+Requires Node.js 22.12+, 24+, or 26+ and npm. The converter needs Docker Desktop with Linux containers or Docker Engine.
 
 ```sh
 npm ci
+docker compose up --build -d
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. Service tools default to http://127.0.0.1:8765. Click **Check connection**, select your file, and confirm the displayed destination before conversion. The first Docker build downloads LibreOffice and its dependencies. Local tools work without Docker.
+
+Stop the converter with `docker compose down`. See [service setup and limits](service/README.md) for configuration and deployment.
+
+## Privacy and limits
+
+- Merge/split/rotate/images/edit process files inside the browser. No document upload occurs for these tools.
+- Compression and Office conversions upload only to your configured self-hosted service after explicit confirmation. The supplied service deletes temporary files before responding. Other server operators may use different policies.
+- Service URL and optional API key are held in this tab's memory, not browser storage. No analytics, external fonts, or paid conversion APIs are included. The app host still receives ordinary page requests.
+- Local operations: up to 100 files / 100 MB; editor: one PDF, at most 100 pages. Service: one file / 25 MB, up to 100 PDF pages, one job at a time, 120-second conversion timeout, 50 MB output. Large/complex files can exceed practical memory limits.
+- The editor uses Mozilla PDF.js assets hosted with the app. It does not execute PDF JavaScript. Password-protected PDFs are unsupported.
+- This app is not a malware scanner or sanitizer. Links, attachments, or active content may remain. Page copying can lose bookmarks, form behavior, tags, or other document-level information.
+- OCR, password removal, advanced lossy compression, and secure redaction are not included.
+
+## Checks and deployment
 
 ```sh
 npm test
@@ -30,35 +53,17 @@ npm run typecheck
 npm run build
 ```
 
-Build output is a static website in `out/`. Deploy it to a static host at the domain root. GitHub Pages project subpaths require a matching Next.js `basePath` before building. This repository does not automatically deploy or incur hosting charges. GitHub Actions runs tests, type checks, and builds on pushes and pull requests.
+The frontend exports to `out/` for static hosting at the domain root. `npm ci`, `npm run dev`, and `npm run build` prepare local PDF.js assets automatically. A remote frontend needs its own reachable HTTPS converter service; static hosting alone cannot run LibreOffice. No public deployment is automatic. GitHub project subpaths require configuring both Next.js basePath and PDF.js asset URLs.
 
-## Privacy
+Service tests: install `service/requirements-dev.txt`, then run `python -m pytest service -q`. CI tests both frontend and service, including real LibreOffice conversions. See [service/README.md](service/README.md).
 
-- File bytes are processed locally using pdf-lib and fflate. No upload endpoints, third-party fonts, analytics, or external runtime scripts.
-- Input File objects and generated Blob URLs remain in this tab's memory. Clear all, switch tools, or close the tab to release references. Obsolete download URLs are revoked. Memory cleanup is not guaranteed forensic erasure; downloaded files remain on disk.
-- Your host may log ordinary page requests and IP addresses. The operating system and browser extensions are outside this app's control.
-- This app is not a malware scanner or PDF sanitizer. Use trusted documents; existing links or active content may remain in output.
-- Encrypted/password-protected PDFs are rejected. Password removal is not supported.
+## Code layout
 
-## Limits and fidelity
+- `app/page.tsx`, `lib/tools.ts`: tool catalog, responsive UI, processing-location notices, explicit upload consent.
+- `app/PdfEditor.tsx`, `lib/viewer.ts`: visual annotation editor and PDF.js rendering.
+- `lib/pdf.ts`: local PDF operations and page selection.
+- `lib/service.ts`: validated service URL, bounded request, error handling.
+- `service/`: isolated conversion API, workers, Docker configuration, integration tests.
+- `tests/`: local PDF and client-service tests.
 
-Up to **100 files and 100 MB total** per operation. These guardrails do not guarantee success: decoded images and complex PDFs can use much more memory than their file sizes. Processing runs on the main browser thread, so heavy jobs can temporarily pause the interface.
-
-Keep originals and inspect results. Document-level bookmarks, attachments, tags, forms, and digital signatures may not survive page copying or edits. Editing signed documents can invalidate signatures. This is not an archival or accessibility-preservation tool.
-
-Office conversion, OCR, advanced compression, PDF-to-image, and PDF editing are outside this MVP. They require separate fidelity testing, licensing review, resource budgets, and possibly funded backend infrastructure. No unlimited backend-heavy conversion is promised.
-
-## Structure and tests
-
-- `app/page.tsx`: homepage and local file workflow.
-- `app/globals.css`: responsive design and reduced-motion support.
-- `lib/pdf.ts`: validation, page parsing, PDF operations, and ZIP output.
-- `tests/pdf.test.ts`: generated fixtures verify page order, extraction, ZIP entries, rotation, PNG embedding, and errors.
-- `.github/workflows/ci.yml`: automated verification.
-
-## Licensing and future work
-
-MIT-licensed. Runtime libraries: Next.js, React/React DOM, pdf-lib, and fflate (MIT); lucide-react (ISC). See `THIRD_PARTY_NOTICES.md`. No proprietary conversion SDK or paid API is used.
-
-Next steps: Web Worker processing, thumbnails, additional image options, and automated browser interaction tests. Add new formats only after verifying licensing, resource limits, and fidelity.
-
+MIT-licensed project. Dependencies retain their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

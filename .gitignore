@@ -4,3 +4,8 @@ out/
 *.tsbuildinfo
 .env*
 coverage/
+
+public/pdfjs/
+__pycache__/
+.pytest_cache/
+.venv/

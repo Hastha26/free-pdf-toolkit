@@ -18,46 +18,18 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { Tool } from "@/lib/pdf";
+import { tools, type AppTool } from "@/lib/tools";
+import { convertOnService, serviceUrl, type ServiceTool } from "@/lib/service";
+import dynamic from "next/dynamic";
+const PdfEditor = dynamic(() => import("./PdfEditor"), { ssr: false });
 
-const tools = [
-  {
-    id: "merge" as Tool,
-    title: "Merge PDF",
-    description:
-      "Bring your documents together. Combine multiple PDFs into one.",
-    icon: Files,
-    color: "violet",
-    action: "Merge PDFs",
-  },
-  {
-    id: "split" as Tool,
-    title: "Split PDF",
-    description:
-      "Keep just what you need. Extract pages or save them separately.",
-    icon: Scissors,
-    color: "coral",
-    action: "Split PDF",
-  },
-  {
-    id: "rotate" as Tool,
-    title: "Rotate PDF",
-    description:
-      "A fresh perspective. Turn selected pages the right way around.",
-    icon: RotateCw,
-    color: "blue",
-    action: "Rotate PDF",
-  },
-  {
-    id: "images" as Tool,
-    title: "Images to PDF",
-    description: "Give your images a home. Turn JPGs and PNGs into a PDF.",
-    icon: ImagePlus,
-    color: "green",
-    action: "Create PDF",
-  },
-];
 export default function Home() {
-  const [active, setActive] = useState<Tool>("merge");
+  const [active, setActive] = useState<AppTool>("merge");
+  const [endpoint, setEndpoint] = useState("http://127.0.0.1:8765");
+  const [apiKey, setApiKey] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [mode, setMode] = useState("default");
+  const [serviceStatus, setServiceStatus] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [pages, setPages] = useState("");
   const [angle, setAngle] = useState(90);
@@ -81,43 +53,42 @@ export default function Home() {
     setPages("");
     setError("");
     setResult(null);
+    setConsent(false);
+    setMode("default");
     if (input.current) input.current.value = "";
   }
-  function choose(id: Tool) {
+  function choose(id: AppTool) {
     if (busy) return;
     reset();
     setActive(id);
+    document.getElementById("workspace")?.scrollIntoView({ block: "start" });
   }
   function add(incoming: File[]) {
+    setConsent(false);
     setError("");
     setResult(null);
     const valid = incoming.every((f) =>
-      active === "images"
-        ? /\.(jpe?g|png)$/i.test(f.name)
-        : /\.pdf$/i.test(f.name),
+      tool.accept.split(",").some((ext) => f.name.toLowerCase().endsWith(ext)),
     );
     if (!valid) {
-      setError(
-        active === "images"
-          ? "Please choose JPG or PNG images."
-          : "Please choose PDF files.",
-      );
+      setError(`Choose a supported file: ${tool.accept}.`);
       return;
     }
     const next =
-      active === "split" || active === "rotate"
-        ? incoming
-        : [...files, ...incoming];
-    if ((active === "split" || active === "rotate") && next.length > 1) {
+      active === "merge" || active === "images"
+        ? [...files, ...incoming]
+        : incoming;
+    if (active !== "merge" && active !== "images" && next.length > 1) {
       setError("This tool accepts one PDF at a time.");
       return;
     }
     if (
       next.length > 100 ||
-      next.reduce((n, f) => n + f.size, 0) > 100 * 1024 * 1024
+      next.reduce((n, f) => n + f.size, 0) >
+        (tool.service ? 25 : 100) * 1024 * 1024
     ) {
       setError(
-        "Choose up to 100 files, with a combined size of 100 MB or less.",
+        `Choose up to ${tool.service ? "one file, 25" : "100 files, 100"} MB total or less.`,
       );
       return;
     }
@@ -136,6 +107,21 @@ export default function Home() {
     setError("");
     setResult(null);
     try {
+      if (tool.service) {
+        if (!consent)
+          throw new Error(
+            "Confirm sending this file to your conversion service first.",
+          );
+        const output = await convertOnService(
+          active as ServiceTool,
+          files[0],
+          endpoint,
+          apiKey,
+          mode,
+        );
+        setResult({ url: URL.createObjectURL(output.blob), name: output.name });
+        return;
+      }
       const { processPdf } = await import("@/lib/pdf");
       const data = await Promise.all(
         files.map(async (f) => ({
@@ -143,7 +129,11 @@ export default function Home() {
           bytes: new Uint8Array(await f.arrayBuffer()),
         })),
       );
-      const output = await processPdf(active, data, { pages, angle, separate });
+      const output = await processPdf(active as Tool, data, {
+        pages,
+        angle,
+        separate,
+      });
       const blob = new Blob([new Uint8Array(output.bytes)], {
         type: output.type,
       });
@@ -168,7 +158,28 @@ export default function Home() {
           paperfree<span className="brand-dot">.</span>
         </a>
         <nav aria-label="Main navigation">
-          <a href="#tools">PDF tools</a>
+          <details className="header-tools">
+            <summary>
+              All tools <ChevronDown size={15} />
+            </summary>
+            <div className="header-tool-menu" aria-label="Choose a PDF tool">
+              {tools.map((item) => (
+                <button
+                  key={item.id}
+                  disabled={busy}
+                  onClick={(event) => {
+                    choose(item.id);
+                    event.currentTarget
+                      .closest("details")
+                      ?.removeAttribute("open");
+                  }}
+                >
+                  <item.icon size={18} />
+                  {item.title}
+                </button>
+              ))}
+            </div>
+          </details>
           <a href="#privacy">Your privacy</a>
           <a
             className="github"
@@ -199,7 +210,7 @@ export default function Home() {
             </span>
             <span>
               <Check />
-              No uploads
+              Local PDF tools
             </span>
             <span>
               <Check />
@@ -223,6 +234,357 @@ export default function Home() {
             </span>
             <span className="art-spark">✳</span>
           </div>
+          <section
+            id="workspace"
+            className="workspace"
+            aria-labelledby="workspace-title"
+          >
+            <div className="workspace-head">
+              <div>
+                <span className={`mini-icon ${tool.color}`}>
+                  <tool.icon size={21} />
+                </span>
+                <h2 id="workspace-title">{tool.title}</h2>
+              </div>
+              <span>
+                <LockKeyhole size={14} />{" "}
+                {tool.service
+                  ? "Self-hosted conversion"
+                  : "Only on your device"}
+              </span>
+            </div>
+            <div className="workspace-body">
+              <p className="tool-note">{tool.note}</p>
+              {tool.service && (
+                <div className="service-panel">
+                  <h3>Your conversion service</h3>
+                  <p>
+                    These tools upload the selected file to your configured
+                    server. The supplied service deletes temporary files after
+                    processing. Use only a server you trust.
+                  </p>
+                  <div className="options">
+                    <label>
+                      Service URL
+                      <input
+                        type="url"
+                        value={endpoint}
+                        disabled={busy}
+                        onChange={(e) => {
+                          setEndpoint(e.target.value);
+                          setConsent(false);
+                          setServiceStatus("");
+                        }}
+                      />
+                    </label>
+                    <label>
+                      API key (if configured)
+                      <input
+                        type="password"
+                        autoComplete="off"
+                        value={apiKey}
+                        disabled={busy}
+                        onChange={(e) => {
+                          setApiKey(e.target.value);
+                          setConsent(false);
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <button
+                    className="secondary"
+                    disabled={busy}
+                    onClick={async () => {
+                      setServiceStatus("Checking…");
+                      try {
+                        const r = await fetch(
+                          `${serviceUrl(endpoint)}/health`,
+                          {
+                            headers: apiKey ? { "X-API-Key": apiKey } : {},
+                            signal: AbortSignal.timeout(5000),
+                            credentials: "omit",
+                            redirect: "error",
+                          },
+                        );
+                        if (!r.ok) throw new Error();
+                        const status = await r.json();
+                        setServiceStatus(
+                          status.office
+                            ? "Connected. LibreOffice is ready."
+                            : "Connected. LibreOffice is missing; Office-to-PDF is unavailable.",
+                        );
+                      } catch {
+                        setServiceStatus(
+                          "Service unavailable. Start Docker Compose, then check the URL and API key.",
+                        );
+                      }
+                    }}
+                  >
+                    Check connection
+                  </button>
+                  <p role="status">{serviceStatus}</p>
+                  <small>
+                    Local setup: <code>docker compose up --build -d</code>.
+                    Settings stay in this tab.
+                  </small>
+                </div>
+              )}
+
+              <div
+                className={`dropzone ${dragging ? "dragging" : ""}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!busy) setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragging(false);
+                  if (!busy) add(Array.from(e.dataTransfer.files));
+                }}
+              >
+                <span className="upload-icon">
+                  <Upload size={27} />
+                </span>
+                <h3>
+                  {files.length
+                    ? "Need to add another file?"
+                    : `Drop your ${active === "images" ? "images" : tool.service && active.endsWith("-pdf") ? "Office document" : "PDF" + (active === "merge" ? "s" : "")} here`}
+                </h3>
+                <p>or choose {tool.accept} files from your device</p>
+                <button
+                  className="primary"
+                  disabled={busy}
+                  onClick={() => input.current?.click()}
+                >
+                  <Upload size={17} />
+                  Choose files
+                </button>
+                <input
+                  ref={input}
+                  type="file"
+                  aria-label="Choose files"
+                  accept={tool.accept}
+                  multiple={active === "merge" || active === "images"}
+                  onChange={(e) => {
+                    add(Array.from(e.target.files ?? []));
+                    e.target.value = "";
+                  }}
+                  hidden
+                />
+                <small>
+                  {tool.service
+                    ? "Up to 25 MB · Sent only to the service you configure"
+                    : "Up to 100 MB total · Processed in your browser"}
+                </small>
+              </div>
+              {files.length > 0 && (
+                <div className="selection">
+                  <div className="selection-title">
+                    <strong>
+                      {files.length} file{files.length > 1 ? "s" : ""} selected
+                    </strong>
+                    <button
+                      className="text-button"
+                      disabled={busy}
+                      onClick={reset}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                  <ol className="file-list">
+                    {files.map((f, i) => (
+                      <li key={`${f.name}-${i}`}>
+                        <FileText size={20} />
+                        <span>
+                          <b>{f.name}</b>
+                          <small>{(f.size / 1024 / 1024).toFixed(2)} MB</small>
+                        </span>
+                        <button
+                          aria-label={`Move ${f.name} up`}
+                          disabled={busy || i === 0}
+                          onClick={() => move(i, -1)}
+                        >
+                          <ChevronUp size={18} />
+                        </button>
+                        <button
+                          aria-label={`Move ${f.name} down`}
+                          disabled={busy || i === files.length - 1}
+                          onClick={() => move(i, 1)}
+                        >
+                          <ChevronDown size={18} />
+                        </button>
+                        <button
+                          aria-label={`Remove ${f.name}`}
+                          disabled={busy}
+                          onClick={() => {
+                            setResult(null);
+                            setFiles(files.filter((_, j) => j !== i));
+                          }}
+                        >
+                          <X size={18} />
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                  {(active === "split" || active === "rotate") && (
+                    <div className="options">
+                      <label>
+                        Pages{" "}
+                        <input
+                          value={pages}
+                          disabled={busy}
+                          placeholder="All pages, or e.g. 1, 3-5"
+                          onChange={(e) => {
+                            setPages(e.target.value);
+                            setResult(null);
+                          }}
+                        />
+                        <small>
+                          Leave blank for all pages. Page numbers start at 1.
+                        </small>
+                      </label>
+                      {active === "split" ? (
+                        <label className="checkbox">
+                          <input
+                            type="checkbox"
+                            checked={separate}
+                            disabled={busy}
+                            onChange={(e) => {
+                              setSeparate(e.target.checked);
+                              setResult(null);
+                            }}
+                          />{" "}
+                          Save each selected page as a PDF in a ZIP
+                        </label>
+                      ) : (
+                        <label>
+                          Clockwise rotation
+                          <select
+                            value={angle}
+                            disabled={busy}
+                            onChange={(e) => {
+                              setAngle(Number(e.target.value));
+                              setResult(null);
+                            }}
+                          >
+                            <option value={90}>90 degrees</option>
+                            <option value={180}>180 degrees</option>
+                            <option value={270}>270 degrees</option>
+                          </select>
+                        </label>
+                      )}
+                    </div>
+                  )}
+                  {tool.service && (
+                    <>
+                      {active === "pdf-powerpoint" && (
+                        <div className="options">
+                          <label>
+                            Slide content
+                            <select
+                              value={mode}
+                              disabled={busy}
+                              onChange={(e) => {
+                                setMode(e.target.value);
+                                setResult(null);
+                              }}
+                            >
+                              <option value="default">
+                                Visual pages (not editable text)
+                              </option>
+                              <option value="text">
+                                Editable text (simple layout)
+                              </option>
+                            </select>
+                          </label>
+                        </div>
+                      )}
+                      {active === "pdf-excel" && (
+                        <div className="options">
+                          <label>
+                            Extraction mode
+                            <select
+                              value={mode}
+                              disabled={busy}
+                              onChange={(e) => {
+                                setMode(e.target.value);
+                                setResult(null);
+                              }}
+                            >
+                              <option value="default">Detect tables</option>
+                              <option value="rows">Text rows</option>
+                            </select>
+                          </label>
+                        </div>
+                      )}
+                      <label className="upload-consent">
+                        <input
+                          type="checkbox"
+                          checked={consent}
+                          disabled={busy}
+                          onChange={(e) => setConsent(e.target.checked)}
+                        />
+                        Send this file to {endpoint} for conversion.
+                      </label>
+                    </>
+                  )}
+                  {active === "edit" && (
+                    <PdfEditor
+                      key={files[0].name + files[0].lastModified}
+                      file={files[0]}
+                      onChange={() => setResult(null)}
+                      onReady={(blob, name) =>
+                        setResult({ url: URL.createObjectURL(blob), name })
+                      }
+                    />
+                  )}
+                  {active !== "edit" && (
+                    <button
+                      className="primary process"
+                      disabled={busy}
+                      onClick={run}
+                    >
+                      {busy
+                        ? tool.service
+                          ? "Converting on your service…"
+                          : "Processing on your device…"
+                        : tool.action}
+                    </button>
+                  )}
+                </div>
+              )}
+              <div aria-live="polite" aria-atomic="true">
+                {error && (
+                  <p className="error" role="alert">
+                    {error}
+                  </p>
+                )}
+                {result && (
+                  <div className="success">
+                    <span>
+                      <Check size={22} />
+                      <b>Your file is ready.</b>
+                    </span>
+                    <a
+                      className="primary"
+                      href={result.url}
+                      download={result.name}
+                    >
+                      <Download size={17} />
+                      Download {result.name.split(".").pop()?.toUpperCase()}
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="workspace-foot">
+              <ShieldCheck size={17} />{" "}
+              {tool.service
+                ? "Files are sent to your service only after you confirm and start conversion."
+                : "Private by default. This tool processes files locally in your browser."}
+            </div>
+          </section>
         </section>
         <section id="tools" className="tools">
           <div className="section-heading">
@@ -230,7 +592,7 @@ export default function Home() {
               <span className="eyebrow">SMALL TOOLS. BIG DIFFERENCE.</span>
               <h2>Make light work of paperwork.</h2>
             </div>
-            <span className="tool-count">4 tools. Zero paywalls.</span>
+            <span className="tool-count">12 tools. Zero paywalls.</span>
           </div>
           <div className="tool-grid">
             {tools.map((t) => (
@@ -254,203 +616,6 @@ export default function Home() {
             ))}
           </div>
         </section>
-        <section className="workspace" aria-labelledby="workspace-title">
-          <div className="workspace-head">
-            <div>
-              <span className={`mini-icon ${tool.color}`}>
-                <tool.icon size={21} />
-              </span>
-              <h2 id="workspace-title">{tool.title}</h2>
-            </div>
-            <span>
-              <LockKeyhole size={14} /> Only on your device
-            </span>
-          </div>
-          <div className="workspace-body">
-            <div
-              className={`dropzone ${dragging ? "dragging" : ""}`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                if (!busy) setDragging(true);
-              }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragging(false);
-                if (!busy) add(Array.from(e.dataTransfer.files));
-              }}
-            >
-              <span className="upload-icon">
-                <Upload size={27} />
-              </span>
-              <h3>
-                {files.length
-                  ? "Need to add another file?"
-                  : `Drop your ${active === "images" ? "images" : "PDF" + (active === "merge" ? "s" : "")} here`}
-              </h3>
-              <p>
-                or choose{" "}
-                {active === "images" ? "JPG and PNG images" : "PDF files"} from
-                your device
-              </p>
-              <button
-                className="primary"
-                disabled={busy}
-                onClick={() => input.current?.click()}
-              >
-                <Upload size={17} />
-                Choose files
-              </button>
-              <input
-                ref={input}
-                type="file"
-                aria-label="Choose files"
-                accept={active === "images" ? ".jpg,.jpeg,.png" : ".pdf"}
-                multiple={active === "merge" || active === "images"}
-                onChange={(e) => {
-                  add(Array.from(e.target.files ?? []));
-                  e.target.value = "";
-                }}
-                hidden
-              />
-              <small>Up to 100 MB total · Files never leave your browser</small>
-            </div>
-            {files.length > 0 && (
-              <div className="selection">
-                <div className="selection-title">
-                  <strong>
-                    {files.length} file{files.length > 1 ? "s" : ""} selected
-                  </strong>
-                  <button
-                    className="text-button"
-                    disabled={busy}
-                    onClick={reset}
-                  >
-                    Clear all
-                  </button>
-                </div>
-                <ol className="file-list">
-                  {files.map((f, i) => (
-                    <li key={`${f.name}-${i}`}>
-                      <FileText size={20} />
-                      <span>
-                        <b>{f.name}</b>
-                        <small>{(f.size / 1024 / 1024).toFixed(2)} MB</small>
-                      </span>
-                      <button
-                        aria-label={`Move ${f.name} up`}
-                        disabled={busy || i === 0}
-                        onClick={() => move(i, -1)}
-                      >
-                        <ChevronUp size={18} />
-                      </button>
-                      <button
-                        aria-label={`Move ${f.name} down`}
-                        disabled={busy || i === files.length - 1}
-                        onClick={() => move(i, 1)}
-                      >
-                        <ChevronDown size={18} />
-                      </button>
-                      <button
-                        aria-label={`Remove ${f.name}`}
-                        disabled={busy}
-                        onClick={() => {
-                          setResult(null);
-                          setFiles(files.filter((_, j) => j !== i));
-                        }}
-                      >
-                        <X size={18} />
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-                {(active === "split" || active === "rotate") && (
-                  <div className="options">
-                    <label>
-                      Pages{" "}
-                      <input
-                        value={pages}
-                        disabled={busy}
-                        placeholder="All pages, or e.g. 1, 3-5"
-                        onChange={(e) => {
-                          setPages(e.target.value);
-                          setResult(null);
-                        }}
-                      />
-                      <small>
-                        Leave blank for all pages. Page numbers start at 1.
-                      </small>
-                    </label>
-                    {active === "split" ? (
-                      <label className="checkbox">
-                        <input
-                          type="checkbox"
-                          checked={separate}
-                          disabled={busy}
-                          onChange={(e) => {
-                            setSeparate(e.target.checked);
-                            setResult(null);
-                          }}
-                        />{" "}
-                        Save each selected page as a PDF in a ZIP
-                      </label>
-                    ) : (
-                      <label>
-                        Clockwise rotation
-                        <select
-                          value={angle}
-                          disabled={busy}
-                          onChange={(e) => {
-                            setAngle(Number(e.target.value));
-                            setResult(null);
-                          }}
-                        >
-                          <option value={90}>90 degrees</option>
-                          <option value={180}>180 degrees</option>
-                          <option value={270}>270 degrees</option>
-                        </select>
-                      </label>
-                    )}
-                  </div>
-                )}
-                <button
-                  className="primary process"
-                  disabled={busy}
-                  onClick={run}
-                >
-                  {busy ? "Processing on your device…" : tool.action}
-                </button>
-              </div>
-            )}
-            <div aria-live="polite" aria-atomic="true">
-              {error && (
-                <p className="error" role="alert">
-                  {error}
-                </p>
-              )}
-              {result && (
-                <div className="success">
-                  <span>
-                    <Check size={22} />
-                    <b>Your file is ready.</b>
-                  </span>
-                  <a
-                    className="primary"
-                    href={result.url}
-                    download={result.name}
-                  >
-                    <Download size={17} />
-                    Download {result.name.endsWith("zip") ? "ZIP" : "PDF"}
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="workspace-foot">
-            <ShieldCheck size={17} /> Private by default. Your files are
-            processed locally, never uploaded.
-          </div>
-        </section>
         <section className="privacy" id="privacy">
           <div className="privacy-symbol">
             <ShieldCheck size={35} />
@@ -458,29 +623,32 @@ export default function Home() {
           <div>
             <span className="eyebrow">YOUR DOCUMENTS. YOUR BUSINESS.</span>
             <h2>
-              What happens in your browser,
+              Local when possible.
               <br />
-              stays in your browser.
+              Your server when needed.
             </h2>
             <p>
-              No file uploads, accounts, or tracking analytics. Files stay in
-              this tab’s memory while you work. Clear your selection or close
-              the tab to release them; downloaded files remain on your device.
+              Merge, split, rotate, images, and editing run in this tab.
+              Compression and Office conversions send files to your chosen
+              self-hosted service with your confirmation. No accounts or
+              tracking analytics. Downloaded files stay on your device.
             </p>
           </div>
           <div className="privacy-notes">
             <div>
               <b>Free, with practical limits</b>
               <p>
-                Up to 100 files and 100 MB per operation. Large documents may
-                need more memory or time.
+                Local tools accept up to 100 MB. The service accepts 25 MB, up
+                to 100 PDF pages, and one job at a time with a two-minute
+                conversion timeout.
               </p>
             </div>
             <div>
-              <b>Focused on the essentials</b>
+              <b>Honest conversion limits</b>
               <p>
-                Office conversion, OCR, password removal, and advanced
-                compression are outside this first release.
+                PDF-to-Office exports offer text/table extraction or visual
+                slides, not perfect reconstruction. OCR and password removal are
+                not included.
               </p>
             </div>
           </div>
@@ -490,10 +658,11 @@ export default function Home() {
           <details>
             <summary>Can I use sensitive documents?</summary>
             <p>
-              The app does not send your document contents to a server or store
-              them in browser storage. Your host still receives normal page
-              requests and may log connection information. Use a trusted device
-              and follow your organization’s rules.
+              Local tools keep file contents in your browser. Service tools
+              upload only to the URL shown in the conversion panel. The supplied
+              service removes temporary files before returning a result, but
+              other operators may have different policies. Use trusted devices
+              and services, and follow your organization’s rules.
             </p>
           </details>
           <details>
