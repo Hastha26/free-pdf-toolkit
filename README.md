@@ -4,22 +4,22 @@ A free, open-source Next.js/TypeScript toolkit with **12 working tools**. Indepe
 
 ## Tools and processing locations
 
-| Tool              | Where it runs | Behavior                                                                        |
-| ----------------- | ------------- | ------------------------------------------------------------------------------- |
-| Merge PDF         | Browser       | Combine PDFs in the displayed order.                                            |
-| Split PDF         | Browser       | Extract pages or download individual pages in a ZIP.                            |
-| Rotate PDF        | Browser       | Rotate all or selected pages.                                                   |
-| Images to PDF     | Browser       | JPEG/PNG images on A4 pages.                                                    |
-| Edit PDF          | Browser       | Visual text, image, rectangle, and freehand overlays; undo and page navigation. |
-| Compress PDF      | Your service  | Lossless stream/object optimization; original returned if no saving.            |
-| PDF to Word       | Your service  | Visual DOCX pages by default; optional editable text with simple layout.        |
-| PDF to PowerPoint | Your service  | Visual page-image slides, or simple editable text slides.                       |
-| PDF to Excel      | Your service  | Detected tables or text rows in XLSX; one sheet per page.                       |
-| Word to PDF       | Your service  | DOC, DOCX, ODT via LibreOffice.                                                 |
-| PowerPoint to PDF | Your service  | PPT, PPTX, ODP via LibreOffice.                                                 |
-| Excel to PDF      | Your service  | XLS, XLSX, ODS via LibreOffice.                                                 |
+| Tool              | Where it runs                             | Behavior                                                                        |
+| ----------------- | ----------------------------------------- | ------------------------------------------------------------------------------- |
+| Merge PDF         | Browser                                   | Combine PDFs in the displayed order.                                            |
+| Split PDF         | Browser                                   | Extract pages or download individual pages in a ZIP.                            |
+| Rotate PDF        | Browser                                   | Rotate all or selected pages.                                                   |
+| Images to PDF     | Browser                                   | JPEG/PNG images on A4 pages.                                                    |
+| Edit PDF          | Browser                                   | Visual text, image, rectangle, and freehand overlays; undo and page navigation. |
+| Compress PDF      | Your service                              | Lossless stream/object optimization; original returned if no saving.            |
+| PDF to Word       | Browser (visual), service (editable text) | Visual DOCX pages by default; optional editable text with simple layout.        |
+| PDF to PowerPoint | Your service                              | Visual page-image slides, or simple editable text slides.                       |
+| PDF to Excel      | Your service                              | Detected tables or text rows in XLSX; one sheet per page.                       |
+| Word to PDF       | Your service                              | DOC, DOCX, ODT via LibreOffice.                                                 |
+| PowerPoint to PDF | Your service                              | PPT, PPTX, ODP via LibreOffice.                                                 |
+| Excel to PDF      | Your service                              | XLS, XLSX, ODS via LibreOffice.                                                 |
 
-Visual PDF-to-Word preserves appearance by placing each rendered PDF page as an image in Word; the text in that mode cannot be edited. Editable-text mode extracts selectable text and loses the original layout. PDF-to-Excel and PDF-to-PowerPoint are also not promises of perfect reconstruction. Fonts, complex layouts, tables, and scans need review. The editor adds annotations; it cannot rewrite existing text or securely redact it. Original page content stays intact; added annotations are raster overlays. Digital signatures can be invalidated. Keep originals.
+Visual PDF-to-Word runs in the browser and preserves appearance by placing each rendered PDF page as an image in Word; the text in that mode cannot be edited. Editable-text mode uses your service, extracts selectable text, and loses the original layout. PDF-to-Excel and PDF-to-PowerPoint are also not promises of perfect reconstruction. Fonts, complex layouts, tables, and scans need review. The editor adds annotations; it cannot rewrite existing text or securely redact it. Original page content stays intact; added annotations are raster overlays. Digital signatures can be invalidated. Keep originals.
 
 ## Start locally
 
@@ -37,8 +37,8 @@ Stop the converter with `docker compose down`. See [service setup and limits](se
 
 ## Privacy and limits
 
-- Merge/split/rotate/images/edit process files inside the browser. No document upload occurs for these tools.
-- Compression and Office conversions upload only to your configured self-hosted service after explicit confirmation. The supplied service deletes temporary files before responding. Other server operators may use different policies.
+- Merge/split/rotate/images/edit and visual PDF-to-Word process files inside the browser. No document upload occurs for these tools.
+- Compression, editable-text PDF-to-Word, and other Office conversions upload only to your configured self-hosted service after explicit confirmation. The supplied service deletes temporary files before responding. Other server operators may use different policies.
 - Service URL and optional API key are held in this tab's memory, not browser storage. No analytics, external fonts, or paid conversion APIs are included. The app host still receives ordinary page requests.
 - Local tools and batch conversion have no fixed file-count limit. A batch of service outputs downloads as a ZIP. Up to three conversion jobs run at once by default; additional jobs wait. The editor handles one PDF at a time. Device memory, server memory, temporary storage, and per-file timeouts still impose practical bounds.
 - The editor uses Mozilla PDF.js assets hosted with the app. It does not execute PDF JavaScript. Password-protected PDFs are unsupported.
