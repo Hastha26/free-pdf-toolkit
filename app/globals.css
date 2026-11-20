@@ -18,6 +18,23 @@ header {
   gap: 7px;
   cursor: pointer;
   list-style: none;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.nav-tool {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.nav-tool:hover,
+.header-tools summary:hover {
+  color: var(--purple);
 }
 .header-tools summary::-webkit-details-marker {
   display: none;
@@ -61,6 +78,15 @@ header {
   background: white;
   margin-top: 45px;
   text-align: left;
+}
+.hero-focused {
+  padding-top: 28px;
+}
+.hero-focused > :not(.workspace) {
+  display: none;
+}
+.hero-focused > .workspace {
+  margin-top: 0;
 }
 @media (max-width: 650px) {
   .header-tool-menu {
@@ -292,9 +318,33 @@ header {
 nav {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: clamp(12px, 2.6vw, 32px);
   font-size: 14px;
   font-weight: 600;
+}
+@media (max-width: 850px) {
+  header {
+    height: auto;
+    min-height: 96px;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+  nav {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 14px 20px;
+    font-size: 12px;
+  }
+  .header-tools {
+    position: static;
+  }
+  .header-tool-menu {
+    top: calc(100% - 4px);
+    right: 18px;
+    width: min(420px, calc(100vw - 36px));
+  }
 }
 nav a:hover,
 footer a:hover {
@@ -893,17 +943,16 @@ footer > a:last-child {
 }
 @media (max-width: 650px) {
   header {
-    height: 78px;
+    height: auto;
     padding: 0 20px;
+    padding-top: 16px;
+    padding-bottom: 16px;
   }
   .brand {
     font-size: 23px;
   }
   nav {
     gap: 14px;
-  }
-  nav > a:first-child {
-    display: none;
   }
   nav .github {
     padding: 9px;
@@ -1061,7 +1110,7 @@ footer > a:last-child {
   }
   .header-tool-menu {
     right: 18px;
-    top: 65px;
+    top: calc(100% - 4px);
     width: min(350px, calc(100vw - 36px));
   }
 }

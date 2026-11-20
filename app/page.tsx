@@ -42,6 +42,7 @@ async function runBatch<T>(
 }
 export default function Home() {
   const [active, setActive] = useState<AppTool>("merge");
+  const [toolFocused, setToolFocused] = useState(false);
   const [endpoint, setEndpoint] = useState("http://127.0.0.1:8765");
   const [apiKey, setApiKey] = useState("");
   const [consent, setConsent] = useState(false);
@@ -78,7 +79,10 @@ export default function Home() {
     if (busy) return;
     reset();
     setActive(id);
-    document.getElementById("workspace")?.scrollIntoView({ block: "start" });
+    setToolFocused(true);
+    requestAnimationFrame(() =>
+      document.getElementById("hero")?.scrollIntoView({ block: "start" }),
+    );
   }
   function add(incoming: File[]) {
     setConsent(false);
@@ -230,16 +234,50 @@ export default function Home() {
   return (
     <>
       <header>
-        <a className="brand" href="#" aria-label="Paperfree home">
+        <a
+          className="brand"
+          href="#"
+          aria-label="Paperfree home"
+          onClick={() => setToolFocused(false)}
+        >
           <span className="brandmark">
             <Files size={23} />
           </span>
           paperfree<span className="brand-dot">.</span>
         </a>
         <nav aria-label="Main navigation">
+          <button className="nav-tool" disabled={busy} onClick={() => choose("merge")}>
+            Merge PDF
+          </button>
+          <button className="nav-tool" disabled={busy} onClick={() => choose("split")}>
+            Split PDF
+          </button>
+          <button className="nav-tool" disabled={busy} onClick={() => choose("compress")}>
+            Compress PDF
+          </button>
           <details className="header-tools">
             <summary>
-              All tools <ChevronDown size={15} />
+              Convert PDF <ChevronDown size={17} />
+            </summary>
+            <div className="header-tool-menu" aria-label="Choose a conversion tool">
+              {tools.filter((item) => item.service || item.id === "images").map((item) => (
+                <button
+                  key={item.id}
+                  disabled={busy}
+                  onClick={(event) => {
+                    choose(item.id);
+                    event.currentTarget.closest("details")?.removeAttribute("open");
+                  }}
+                >
+                  <item.icon size={18} />
+                  {item.title}
+                </button>
+              ))}
+            </div>
+          </details>
+          <details className="header-tools">
+            <summary>
+              All PDF tools <ChevronDown size={17} />
             </summary>
             <div className="header-tool-menu" aria-label="Choose a PDF tool">
               {tools.map((item) => (
@@ -259,11 +297,10 @@ export default function Home() {
               ))}
             </div>
           </details>
-          <a href="#privacy">Your privacy</a>
         </nav>
       </header>
       <main>
-        <section className="hero">
+        <section id="hero" className={`hero ${toolFocused ? "hero-focused" : ""}`}>
           <div className="eyebrow">
             <Sparkles size={14} /> LESS FRICTION. MORE DONE.
           </div>
