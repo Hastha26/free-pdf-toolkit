@@ -59,12 +59,12 @@ export const tools: {
   {
     id: "pdf-word",
     title: "PDF to Word",
-    description: "Extract selectable text into an editable DOCX document.",
+    description: "Keep each PDF page looking the same in a Word document.",
     icon: FileText,
     color: "blue",
     action: "Convert to Word",
     accept: ".pdf",
-    note: "Text extraction with page breaks. Original fonts, images, columns, and complex layouts are not reconstructed. Scanned PDFs require OCR, which is not included.",
+    note: "Visual mode preserves each page's appearance as an image in Word; its text is not editable. Choose editable text mode to extract words into a simple layout. Scanned PDFs need OCR for editable text.",
     service: true,
   },
   {

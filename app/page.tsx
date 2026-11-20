@@ -631,6 +631,24 @@ export default function Home() {
                   )}
                   {tool.service && (
                     <>
+                      {active === "pdf-word" && (
+                        <div className="options">
+                          <label>
+                            Word output
+                            <select
+                              value={mode}
+                              disabled={busy}
+                              onChange={(e) => {
+                                setMode(e.target.value);
+                                setResult(null);
+                              }}
+                            >
+                              <option value="default">Keep PDF appearance (not editable text)</option>
+                              <option value="text">Editable text (simple layout)</option>
+                            </select>
+                          </label>
+                        </div>
+                      )}
                       {active === "pdf-powerpoint" && (
                         <div className="options">
                           <label>

@@ -11,7 +11,7 @@ The browser's default converter URL is **http://127.0.0.1:8765**. Click **Check 
 ## Supported operations
 
 - `compress`: lossless stream compression and duplicate-object removal. The original is returned if optimization does not reduce size. No image downsampling.
-- `pdf-word`: editable DOCX text with page breaks. Does not reconstruct original layout, images, or fonts.
+- `pdf-word`: visual DOCX pages by default, preserving appearance as page images without editable text; optional `mode=text` extracts editable text with a simple layout.
 - `pdf-powerpoint`: page images on slides (default), or simple editable text slides (`mode=text`). Visual mode works for scans but is not editable text.
 - `pdf-excel`: detected tables (default), or selectable text rows (`mode=rows`), one worksheet per page. Extracted values are literal strings; formulas are never executed.
 - `word-pdf`: DOC/DOCX/ODT using LibreOffice.

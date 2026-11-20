@@ -12,14 +12,14 @@ A free, open-source Next.js/TypeScript toolkit with **12 working tools**. Indepe
 | Images to PDF     | Browser       | JPEG/PNG images on A4 pages.                                                    |
 | Edit PDF          | Browser       | Visual text, image, rectangle, and freehand overlays; undo and page navigation. |
 | Compress PDF      | Your service  | Lossless stream/object optimization; original returned if no saving.            |
-| PDF to Word       | Your service  | Editable text in DOCX with page breaks; no layout reconstruction or OCR.        |
+| PDF to Word       | Your service  | Visual DOCX pages by default; optional editable text with simple layout.        |
 | PDF to PowerPoint | Your service  | Visual page-image slides, or simple editable text slides.                       |
 | PDF to Excel      | Your service  | Detected tables or text rows in XLSX; one sheet per page.                       |
 | Word to PDF       | Your service  | DOC, DOCX, ODT via LibreOffice.                                                 |
 | PowerPoint to PDF | Your service  | PPT, PPTX, ODP via LibreOffice.                                                 |
 | Excel to PDF      | Your service  | XLS, XLSX, ODS via LibreOffice.                                                 |
 
-PDF-to-Office is not a promise of perfect reconstruction. Fonts, complex layouts, tables, and scans need review. The editor adds annotations; it cannot rewrite existing text or securely redact it. Original page content stays intact; added annotations are raster overlays. Digital signatures can be invalidated. Keep originals.
+Visual PDF-to-Word preserves appearance by placing each rendered PDF page as an image in Word; the text in that mode cannot be edited. Editable-text mode extracts selectable text and loses the original layout. PDF-to-Excel and PDF-to-PowerPoint are also not promises of perfect reconstruction. Fonts, complex layouts, tables, and scans need review. The editor adds annotations; it cannot rewrite existing text or securely redact it. Original page content stays intact; added annotations are raster overlays. Digital signatures can be invalidated. Keep originals.
 
 ## Start locally
 
