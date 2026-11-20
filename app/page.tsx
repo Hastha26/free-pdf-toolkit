@@ -77,6 +77,11 @@ export default function Home() {
   }
   function choose(id: AppTool) {
     if (busy) return;
+    document
+      .querySelectorAll<HTMLDetailsElement>("details.header-tools[open]")
+      .forEach((menu) => {
+        menu.open = false;
+      });
     reset();
     setActive(id);
     setToolFocused(true);
@@ -238,7 +243,16 @@ export default function Home() {
           className="brand"
           href="#"
           aria-label="Paperfree home"
-          onClick={() => setToolFocused(false)}
+          onClick={() => {
+            document
+              .querySelectorAll<HTMLDetailsElement>(
+                "details.header-tools[open]",
+              )
+              .forEach((menu) => {
+                menu.open = false;
+              });
+            setToolFocused(false);
+          }}
         >
           <span className="brandmark">
             <Files size={23} />
@@ -246,36 +260,55 @@ export default function Home() {
           paperfree<span className="brand-dot">.</span>
         </a>
         <nav aria-label="Main navigation">
-          <button className="nav-tool" disabled={busy} onClick={() => choose("merge")}>
+          <button
+            className="nav-tool"
+            disabled={busy}
+            onClick={() => choose("merge")}
+          >
             Merge PDF
           </button>
-          <button className="nav-tool" disabled={busy} onClick={() => choose("split")}>
+          <button
+            className="nav-tool"
+            disabled={busy}
+            onClick={() => choose("split")}
+          >
             Split PDF
           </button>
-          <button className="nav-tool" disabled={busy} onClick={() => choose("compress")}>
+          <button
+            className="nav-tool"
+            disabled={busy}
+            onClick={() => choose("compress")}
+          >
             Compress PDF
           </button>
-          <details className="header-tools">
+          <details className="header-tools" name="pdf-tool-menu">
             <summary>
               Convert PDF <ChevronDown size={17} />
             </summary>
-            <div className="header-tool-menu" aria-label="Choose a conversion tool">
-              {tools.filter((item) => item.service || item.id === "images").map((item) => (
-                <button
-                  key={item.id}
-                  disabled={busy}
-                  onClick={(event) => {
-                    choose(item.id);
-                    event.currentTarget.closest("details")?.removeAttribute("open");
-                  }}
-                >
-                  <item.icon size={18} />
-                  {item.title}
-                </button>
-              ))}
+            <div
+              className="header-tool-menu"
+              aria-label="Choose a conversion tool"
+            >
+              {tools
+                .filter((item) => item.service || item.id === "images")
+                .map((item) => (
+                  <button
+                    key={item.id}
+                    disabled={busy}
+                    onClick={(event) => {
+                      choose(item.id);
+                      event.currentTarget
+                        .closest("details")
+                        ?.removeAttribute("open");
+                    }}
+                  >
+                    <item.icon size={18} />
+                    {item.title}
+                  </button>
+                ))}
             </div>
           </details>
-          <details className="header-tools">
+          <details className="header-tools" name="pdf-tool-menu">
             <summary>
               All PDF tools <ChevronDown size={17} />
             </summary>
@@ -300,7 +333,10 @@ export default function Home() {
         </nav>
       </header>
       <main>
-        <section id="hero" className={`hero ${toolFocused ? "hero-focused" : ""}`}>
+        <section
+          id="hero"
+          className={`hero ${toolFocused ? "hero-focused" : ""}`}
+        >
           <div className="eyebrow">
             <Sparkles size={14} /> LESS FRICTION. MORE DONE.
           </div>
