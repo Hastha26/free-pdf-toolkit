@@ -918,13 +918,6 @@ footer > span {
   font-size: 12px;
   color: #9692a2;
 }
-footer > a:last-child {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #716a82;
-}
 @media (min-width: 1400px) {
   .hero {
     padding-top: 85px;

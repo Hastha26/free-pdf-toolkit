@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   FileText,
   Files,
-  CodeXml,
   Scissors,
   RotateCw,
   ImagePlus,
@@ -841,9 +840,6 @@ export default function Home() {
           paperfree.
         </a>
         <span>A little less paperwork. A little more freedom.</span>
-        <a href="https://github.com/Hastha26/free-pdf-toolkit">
-          Built in the open <CodeXml size={16} />
-        </a>
       </footer>
     </>
   );
