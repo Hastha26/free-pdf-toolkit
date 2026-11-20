@@ -18,7 +18,11 @@ import {
 } from "lucide-react";
 import type { Tool } from "@/lib/pdf";
 import { tools, type AppTool } from "@/lib/tools";
-import { convertOnService, serviceUrl, type ServiceTool } from "@/lib/service";
+import {
+  checkService,
+  convertOnService,
+  type ServiceTool,
+} from "@/lib/service";
 import dynamic from "next/dynamic";
 const PdfEditor = dynamic(() => import("./PdfEditor"), { ssr: false });
 
@@ -124,6 +128,7 @@ export default function Home() {
           throw new Error(
             "Confirm sending this file to your conversion service first.",
           );
+        await checkService(endpoint, apiKey);
         const { zipSync } = await import("fflate");
         const results = await runBatch(files, 3, async (file) => {
           try {
@@ -151,10 +156,16 @@ export default function Home() {
         const failures = results.flatMap((result, i) =>
           result.error ? [`${files[i].name}: ${result.error}`] : [],
         );
-        if (failures.length)
+        if (failures.length) {
+          const reasons = [
+            ...new Set(results.map((item) => item.error).filter(Boolean)),
+          ];
           setError(
-            `${failures.length} file(s) failed. ${failures.slice(0, 3).join(" | ")}`,
+            reasons.length === 1
+              ? `${failures.length} file(s) failed: ${reasons[0]}`
+              : `${failures.length} file(s) failed. ${failures.slice(0, 3).join(" | ")}`,
           );
+        }
         const completed = results.flatMap((result) =>
           result.output ? [result.output] : [],
         );
@@ -493,25 +504,17 @@ export default function Home() {
                     onClick={async () => {
                       setServiceStatus("Checking…");
                       try {
-                        const r = await fetch(
-                          `${serviceUrl(endpoint)}/health`,
-                          {
-                            headers: apiKey ? { "X-API-Key": apiKey } : {},
-                            signal: AbortSignal.timeout(5000),
-                            credentials: "omit",
-                            redirect: "error",
-                          },
-                        );
-                        if (!r.ok) throw new Error();
-                        const status = await r.json();
+                        const status = await checkService(endpoint, apiKey);
                         setServiceStatus(
                           status.office
                             ? "Connected. LibreOffice is ready."
                             : "Connected. LibreOffice is missing; Office-to-PDF is unavailable.",
                         );
-                      } catch {
+                      } catch (failure) {
                         setServiceStatus(
-                          "Service unavailable. Start Docker Compose, then check the URL and API key.",
+                          failure instanceof Error
+                            ? failure.message
+                            : "Converter unavailable. Check the service URL.",
                         );
                       }
                     }}

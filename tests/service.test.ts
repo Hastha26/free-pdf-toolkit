@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { serviceUrl, convertOnService } from "../lib/service";
+import { serviceUrl, convertOnService, checkService } from "../lib/service";
 describe("conversion destination validation", () => {
   it("allows loopback HTTP and remote HTTPS", () => {
     expect(serviceUrl("http://127.0.0.1:8765/")).toBe("http://127.0.0.1:8765");
@@ -19,19 +19,26 @@ describe("conversion destination validation", () => {
 });
 describe("service failures", () => {
   afterEach(() => vi.unstubAllGlobals());
+  it("reports an unreachable converter before batch uploads", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
+    );
+    await expect(checkService("http://127.0.0.1:8765", "")).rejects.toThrow(
+      "Converter unavailable at http://127.0.0.1:8765",
+    );
+  });
   it("surfaces backend error without creating a result", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({
-              detail: "Password-protected PDFs are not supported.",
-            }),
-            { status: 422 },
-          ),
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            detail: "Password-protected PDFs are not supported.",
+          }),
+          { status: 422 },
         ),
+      ),
     );
     await expect(
       convertOnService(

@@ -30,6 +30,30 @@ export function serviceUrl(value: string) {
     throw new Error("Remote converters must use HTTPS.");
   return url.href.replace(/\/$/, "");
 }
+export async function checkService(endpoint: string, key: string) {
+  const base = serviceUrl(endpoint);
+  let response: Response;
+  try {
+    response = await fetch(`${base}/health`, {
+      headers: key ? { "X-API-Key": key } : {},
+      signal: AbortSignal.timeout(5000),
+      credentials: "omit",
+      redirect: "error",
+    });
+  } catch {
+    throw new Error(
+      `Converter unavailable at ${base}. Start the local converter, or check its URL and allowed origins.`,
+    );
+  }
+  if (!response.ok)
+    throw new Error(
+      `Converter connection failed (${response.status}). Check its URL and API key.`,
+    );
+  const status = await response.json().catch(() => null);
+  if (status?.service !== "paperfree" || status?.status !== "ok")
+    throw new Error(`The service at ${base} is not a Paperfree converter.`);
+  return status as { service: "paperfree"; status: "ok"; office: boolean };
+}
 export async function convertOnService(
   tool: ServiceTool,
   file: File,
