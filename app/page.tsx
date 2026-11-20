@@ -65,8 +65,7 @@ export default function Home() {
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const tool = tools.find((t) => t.id === active)!;
-  const usesService =
-    tool.service && !(active === "pdf-word" && mode === "default");
+  const usesService = tool.service;
   useEffect(
     () => () => {
       if (result) URL.revokeObjectURL(result.url);
@@ -127,32 +126,6 @@ export default function Home() {
     setError("");
     setResult(null);
     try {
-      if (active === "pdf-word" && mode === "default") {
-        const { convertPdfToWordVisual } = await import("@/lib/word-visual");
-        const { zipSync } = await import("fflate");
-        const archive: Record<string, Uint8Array> = {};
-        let single: Blob | null = null;
-        for (let i = 0; i < files.length; i++) {
-          const output = await convertPdfToWordVisual(files[i]);
-          if (files.length === 1) single = output;
-          else
-            archive[
-              `${String(i + 1).padStart(3, "0")}-${files[i].name.replace(/\.pdf$/i, "")}.docx`
-            ] = new Uint8Array(await output.arrayBuffer());
-        }
-        const blob =
-          single ??
-          new Blob([new Uint8Array(zipSync(archive, { level: 0 }))], {
-            type: "application/zip",
-          });
-        setResult({
-          url: URL.createObjectURL(blob),
-          name: single
-            ? `${files[0].name.replace(/\.pdf$/i, "")}.docx`
-            : "paperfree-pdf-word-batch.zip",
-        });
-        return;
-      }
       if (usesService) {
         if (!consent)
           throw new Error(
@@ -655,29 +628,6 @@ export default function Home() {
                       )}
                     </div>
                   )}
-                  {active === "pdf-word" && (
-                    <div className="options">
-                      <label>
-                        Word output
-                        <select
-                          value={mode}
-                          disabled={busy}
-                          onChange={(e) => {
-                            setMode(e.target.value);
-                            setConsent(false);
-                            setResult(null);
-                          }}
-                        >
-                          <option value="default">
-                            Keep PDF appearance (not editable text)
-                          </option>
-                          <option value="text">
-                            Editable text (simple layout)
-                          </option>
-                        </select>
-                      </label>
-                    </div>
-                  )}
                   {usesService && (
                     <>
                       {active === "pdf-powerpoint" && (
@@ -830,11 +780,10 @@ export default function Home() {
               Your server when needed.
             </h2>
             <p>
-              Merge, split, rotate, images, editing, and visual PDF-to-Word run
-              in this tab. Compression and other Office conversions send files
-              to your chosen self-hosted service with your confirmation. No
-              accounts or tracking analytics. Downloaded files stay on your
-              device.
+              Merge, split, rotate, images, and editing run in this tab.
+              Compression and Office conversions send files to your chosen
+              self-hosted service with your confirmation. No accounts or
+              tracking analytics. Downloaded files stay on your device.
             </p>
           </div>
           <div className="privacy-notes">
@@ -849,9 +798,9 @@ export default function Home() {
             <div>
               <b>Honest conversion limits</b>
               <p>
-                Visual Word output keeps each PDF page looking the same, but its
-                text is not editable. Editable-text and table exports have
-                simpler layouts. OCR and password removal are not included.
+                Word output contains editable text and reconstructs the PDF
+                layout where possible. Complex designs can still need
+                adjustment. OCR and password removal are not included.
               </p>
             </div>
           </div>

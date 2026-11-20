@@ -59,85 +59,53 @@ def compress(source, target):
         target.write_bytes(source.read_bytes())
 
 
-def pdf_word_text(source, target):
+def pdf_word(source, target):
     import pypdfium2 as pdfium
+    from pdf2docx import Converter
     from docx import Document
+    from docx.oxml.ns import qn
+
     check_pdf(source)
-    document = Document()
-    chars = 0
     pdf = pdfium.PdfDocument(source)
+    selectable = False
     try:
         for index in range(len(pdf)):
             page = pdf[index]
             try:
                 text_page = page.get_textpage()
                 try:
-                    text = text_page.get_text_range().replace("\r\n", "\n")
+                    if text_page.get_text_range().strip():
+                        selectable = True
+                        break
                 finally:
                     text_page.close()
             finally:
                 page.close()
-            if index:
-                document.add_page_break()
-            chars += len(text.strip())
-            if text.strip():
-                document.add_paragraph(text)
     finally:
         pdf.close()
-    if not chars:
+    if not selectable:
         raise ValueError("No selectable text found. This PDF may be scanned; OCR is not included.")
-    document.save(target)
 
-
-def pdf_word_visual(source, target):
-    import pypdfium2 as pdfium
-    from docx import Document
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.shared import Pt
-
-    check_pdf(source)
-    document = Document()
-    pdf = pdfium.PdfDocument(source)
+    converter = Converter(str(source))
     try:
-        for index in range(len(pdf)):
-            page = pdf[index]
-            try:
-                width, height = page.get_size()
-                bitmap = page.render(scale=min(2, 2400 / max(width, height)))
-                try:
-                    image = bitmap.to_pil()
-                    try:
-                        image_bytes = BytesIO()
-                        image.save(image_bytes, format="PNG")
-                        image_bytes.seek(0)
-                    finally:
-                        image.close()
-                finally:
-                    bitmap.close()
-            finally:
-                page.close()
-            section = document.sections[0] if index == 0 else document.add_section()
-            section.page_width, section.page_height = Pt(width), Pt(height)
-            section.top_margin = section.bottom_margin = Pt(6)
-            section.left_margin = section.right_margin = Pt(6)
-            paragraph = document.add_paragraph()
-            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            paragraph.paragraph_format.space_before = Pt(0)
-            paragraph.paragraph_format.space_after = Pt(0)
-            scale = min((width - 12) / width, (height - 24) / height)
-            paragraph.add_run().add_picture(
-                image_bytes, width=Pt(width * scale), height=Pt(height * scale)
-            )
+        converter.convert(str(target))
     finally:
-        pdf.close()
-    document.save(target)
+        converter.close()
+    if not target.is_file() or not target.stat().st_size:
+        raise ValueError("Could not create an editable Word document from this PDF.")
 
-
-def pdf_word(source, target, mode="default"):
-    if mode == "text":
-        pdf_word_text(source, target)
-    else:
-        pdf_word_visual(source, target)
+    # Word may substitute the PDF's embedded condensed Noto face with an
+    # unrelated script font. Arial Narrow is a common compatible fallback.
+    document = Document(target)
+    changed = False
+    for root in (document.element.body, document.styles.element):
+        for fonts in root.iter(qn("w:rFonts")):
+            for name, value in list(fonts.attrib.items()):
+                if "Noto Sans Condensed" in value:
+                    fonts.set(name, "Arial Narrow")
+                    changed = True
+    if changed:
+        document.save(target)
 
 
 def pdf_excel(source, target, mode):
@@ -212,7 +180,7 @@ def convert(tool, source, target, mode="default"):
     elif tool == "compress":
         compress(source, target)
     elif tool == "pdf-word":
-        pdf_word(source, target, mode)
+        pdf_word(source, target)
     elif tool == "pdf-excel":
         pdf_excel(source, target, mode)
     elif tool == "pdf-powerpoint":

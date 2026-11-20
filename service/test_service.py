@@ -48,20 +48,12 @@ def test_compress_preserves_text_and_never_grows(pdf, tmp_path):
 
 def test_word_contains_editable_text(pdf, tmp_path):
     output = tmp_path / 'out.docx'
-    convert('pdf-word', pdf, output, 'text')
-    text = '\n'.join(p.text for p in Document(output).paragraphs)
-    assert 'Paperfree test document' in text and 'Second page' in text
-
-
-def test_word_visual_preserves_pages(pdf, tmp_path):
-    output = tmp_path / 'visual.docx'
     convert('pdf-word', pdf, output)
     document = Document(output)
-    assert len(document.inline_shapes) == 2
-    if shutil.which(os.getenv('SOFFICE_PATH', 'soffice')):
-        roundtrip = tmp_path / 'roundtrip.pdf'
-        convert('word-pdf', output, roundtrip)
-        assert len(PdfReader(roundtrip).pages) == 2
+    text = '\n'.join(p.text for p in document.paragraphs)
+    assert 'Paperfree test document' in text and 'Second page' in text
+    assert len(document.inline_shapes) == 0
+    assert any('Alice' in cell.text for table in document.tables for row in table.rows for cell in row.cells)
 
 
 @pytest.mark.parametrize('mode', ['default', 'text'])
@@ -104,9 +96,7 @@ def test_scan_without_text_is_rejected_for_word(tmp_path):
     blank = tmp_path / 'blank.pdf'
     writer.write(blank)
     with pytest.raises(ValueError, match='No selectable text'):
-        convert('pdf-word', blank, tmp_path / 'out.docx', 'text')
-    convert('pdf-word', blank, tmp_path / 'visual.docx')
-    assert len(Document(tmp_path / 'visual.docx').inline_shapes) == 1
+        convert('pdf-word', blank, tmp_path / 'out.docx')
 
 
 def test_macro_archive_is_rejected(tmp_path):
@@ -134,7 +124,7 @@ def test_api_validates_requests_and_origins(monkeypatch):
 
 def test_api_returns_real_file_and_no_cache(pdf):
     with TestClient(api.app) as client:
-        response = client.post('/convert/pdf-word?filename=sample.pdf&mode=text', content=pdf.read_bytes())
+        response = client.post('/convert/pdf-word?filename=sample.pdf', content=pdf.read_bytes())
     assert response.status_code == 200, response.text
     assert response.headers['cache-control'] == 'no-store'
     assert 'Paperfree' in '\n'.join(p.text for p in Document(BytesIO(response.content)).paragraphs)

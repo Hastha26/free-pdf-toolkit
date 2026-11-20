@@ -59,12 +59,12 @@ export const tools: {
   {
     id: "pdf-word",
     title: "PDF to Word",
-    description: "Keep each PDF page looking the same in a Word document.",
+    description: "Convert PDF text and layout into an editable Word document.",
     icon: FileText,
     color: "blue",
     action: "Convert to Word",
     accept: ".pdf",
-    note: "Visual mode preserves each page's appearance as an image in Word; its text is not editable. Choose editable text mode to extract words into a simple layout. Scanned PDFs need OCR for editable text.",
+    note: "Creates editable text and reconstructs page layout, tables, and images where possible. Complex designs may still need adjustment in Word. Scanned PDFs need OCR, which is not included.",
     service: true,
   },
   {
