@@ -46,7 +46,9 @@ async function runBatch<T>(
 export default function Home() {
   const [active, setActive] = useState<AppTool>("merge");
   const [toolFocused, setToolFocused] = useState(false);
-  const [endpoint, setEndpoint] = useState("http://127.0.0.1:8765");
+  const [endpoint, setEndpoint] = useState(
+    process.env.NEXT_PUBLIC_CONVERTER_URL || "http://127.0.0.1:8765",
+  );
   const [apiKey, setApiKey] = useState("");
   const [consent, setConsent] = useState(false);
   const [mode, setMode] = useState("default");

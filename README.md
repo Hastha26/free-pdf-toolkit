@@ -55,6 +55,8 @@ npm run build
 
 The frontend exports to `out/` for static hosting at the domain root. `npm ci`, `npm run dev`, and `npm run build` prepare local PDF.js assets automatically. A remote frontend needs its own reachable HTTPS converter service; static hosting alone cannot run LibreOffice. No public deployment is automatic. GitHub project subpaths require configuring both Next.js basePath and PDF.js asset URLs.
 
+For a live build, set `NEXT_PUBLIC_CONVERTER_URL=https://your-converter.example` **before** running `npm run build`, then host `out/` at your site's domain root. This is a public URL, not an API secret. Deploy the converter separately behind HTTPS, set its `ALLOWED_ORIGINS` to the exact frontend origin, and add authentication, rate limiting, and monitoring before opening it to the public. Do not use `127.0.0.1` for a public frontend: that address refers to each visitor's own computer. See [service deployment guidance](service/README.md). The live host and domain are not included in this repository.
+
 Service tests: install `service/requirements-dev.txt`, then run `python -m pytest service -q`. CI tests both frontend and service, including real LibreOffice conversions. See [service/README.md](service/README.md).
 
 ## Code layout

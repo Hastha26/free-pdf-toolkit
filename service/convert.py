@@ -60,19 +60,30 @@ def compress(source, target):
 
 
 def pdf_word(source, target):
-    import pdfplumber
+    import pypdfium2 as pdfium
     from docx import Document
     check_pdf(source)
     document = Document()
     chars = 0
-    with pdfplumber.open(source) as pdf:
-        for index, page in enumerate(pdf.pages):
+    pdf = pdfium.PdfDocument(source)
+    try:
+        for index in range(len(pdf)):
+            page = pdf[index]
+            try:
+                text_page = page.get_textpage()
+                try:
+                    text = text_page.get_text_range().replace("\r\n", "\n")
+                finally:
+                    text_page.close()
+            finally:
+                page.close()
             if index:
                 document.add_page_break()
-            text = page.extract_text() or ""
             chars += len(text.strip())
-            for line in text.splitlines():
-                document.add_paragraph(line)
+            if text.strip():
+                document.add_paragraph(text)
+    finally:
+        pdf.close()
     if not chars:
         raise ValueError("No selectable text found. This PDF may be scanned; OCR is not included.")
     document.save(target)
