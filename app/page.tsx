@@ -401,9 +401,60 @@ export default function Home() {
             </div>
             <div className="workspace-body">
               <p className="tool-note">{tool.note}</p>
+              <div
+                className={`dropzone ${dragging ? "dragging" : ""}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!busy) setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragging(false);
+                  if (!busy) add(Array.from(e.dataTransfer.files));
+                }}
+              >
+                <span className="upload-icon">
+                  <Upload size={27} />
+                </span>
+                <h3>
+                  {files.length
+                    ? "Need to add another file?"
+                    : `Drop your ${active === "images" ? "images" : tool.service && active.endsWith("-pdf") ? "Office document" : "PDF" + (active === "merge" ? "s" : "")} here`}
+                </h3>
+                <p>or choose {tool.accept} files from your device</p>
+                <button
+                  className="primary"
+                  disabled={busy}
+                  onClick={() => input.current?.click()}
+                >
+                  <Upload size={17} />
+                  Choose files
+                </button>
+                <input
+                  ref={input}
+                  type="file"
+                  aria-label="Choose files"
+                  accept={tool.accept}
+                  multiple={active !== "edit"}
+                  onChange={(e) => {
+                    add(Array.from(e.target.files ?? []));
+                    e.target.value = "";
+                  }}
+                  hidden
+                />
+                <small>
+                  {tool.service
+                    ? "Batch conversion · Sent only to the service you configure"
+                    : "No fixed file-count limit · Processed in your browser"}
+                </small>
+              </div>
               {tool.service && (
-                <div className="service-panel">
-                  <h3>Your conversion service</h3>
+                <details className="service-panel">
+                  <summary>
+                    Conversion service settings{" "}
+                    <span>Needed for this tool</span>
+                  </summary>
                   <p>
                     These tools upload the selected file to your configured
                     server. The supplied service deletes temporary files after
@@ -473,57 +524,9 @@ export default function Home() {
                     Local setup: <code>docker compose up --build -d</code>.
                     Settings stay in this tab.
                   </small>
-                </div>
+                </details>
               )}
 
-              <div
-                className={`dropzone ${dragging ? "dragging" : ""}`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (!busy) setDragging(true);
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragging(false);
-                  if (!busy) add(Array.from(e.dataTransfer.files));
-                }}
-              >
-                <span className="upload-icon">
-                  <Upload size={27} />
-                </span>
-                <h3>
-                  {files.length
-                    ? "Need to add another file?"
-                    : `Drop your ${active === "images" ? "images" : tool.service && active.endsWith("-pdf") ? "Office document" : "PDF" + (active === "merge" ? "s" : "")} here`}
-                </h3>
-                <p>or choose {tool.accept} files from your device</p>
-                <button
-                  className="primary"
-                  disabled={busy}
-                  onClick={() => input.current?.click()}
-                >
-                  <Upload size={17} />
-                  Choose files
-                </button>
-                <input
-                  ref={input}
-                  type="file"
-                  aria-label="Choose files"
-                  accept={tool.accept}
-                  multiple={active !== "edit"}
-                  onChange={(e) => {
-                    add(Array.from(e.target.files ?? []));
-                    e.target.value = "";
-                  }}
-                  hidden
-                />
-                <small>
-                  {tool.service
-                    ? "Batch conversion · Sent only to the service you configure"
-                    : "No fixed file-count limit · Processed in your browser"}
-                </small>
-              </div>
               {files.length > 0 && (
                 <div className="selection">
                   <div className="selection-title">

@@ -120,7 +120,32 @@ header {
   border: 1px solid #dce2ef;
   border-radius: 12px;
   padding: 22px;
-  margin-bottom: 24px;
+  margin-top: 20px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.service-panel summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+}
+.service-panel summary span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  margin-left: 8px;
+}
+.service-panel[open] summary {
+  margin-bottom: 16px;
+}
+.service-panel .options label {
+  min-width: min(230px, 100%);
+}
+.service-panel .options input {
+  width: 100%;
+  min-width: 0;
 }
 .service-panel h3 {
   margin: 0 0 7px;
