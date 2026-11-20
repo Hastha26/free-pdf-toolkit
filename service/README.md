@@ -11,14 +11,14 @@ The browser's default converter URL is **http://127.0.0.1:8765**. Click **Check 
 ## Supported operations
 
 - `compress`: lossless stream compression and duplicate-object removal. The original is returned if optimization does not reduce size. No image downsampling.
-- `pdf-word`: reconstructs selectable PDF text, tables, layout, and images in an editable DOCX where possible. Complex layouts may need adjustment. Scans require OCR, which is not included.
+- `pdf-word`: reconstructs selectable PDF text, tables, layout, and images in an editable DOCX where possible. Complex layouts may need adjustment. Scanned PDFs use English OCR to create editable Word paragraphs without page screenshots.
 - `pdf-powerpoint`: page images on slides (default), or simple editable text slides (`mode=text`). Visual mode works for scans but is not editable text.
 - `pdf-excel`: detected tables (default), or selectable text rows (`mode=rows`), one worksheet per page. Extracted values are literal strings; formulas are never executed.
 - `word-pdf`: DOC/DOCX/ODT using LibreOffice.
 - `powerpoint-pdf`: PPT/PPTX/ODP using LibreOffice.
 - `excel-pdf`: XLS/XLSX/ODS using LibreOffice's print layout.
 
-PDF input must be unencrypted and contain one or more pages. Scanned PDFs need OCR for Word/Excel/text-slide extraction; OCR is not included. Office fidelity depends on available fonts and LibreOffice support. Animations, macros, and external-link updates are not supported. Check output before relying on it.
+PDF input must be unencrypted and contain one or more pages. English OCR is available for scanned PDF-to-Word; scanned PDF-to-Excel and editable PowerPoint extraction are not supported. For local development, install Tesseract or set TESSERACT_PATH. Office fidelity depends on available fonts and LibreOffice support. Animations, macros, and external-link updates are not supported. Check output before relying on it.
 
 ## Resource and privacy boundaries
 

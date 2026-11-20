@@ -508,7 +508,7 @@ export default function Home() {
                         const status = await checkService(endpoint, apiKey);
                         setServiceStatus(
                           status.office
-                            ? "Connected. LibreOffice is ready."
+                            ? `Connected. LibreOffice is ready. English OCR is ${status.ocr ? "ready" : "unavailable"}.`
                             : "Connected. LibreOffice is missing; Office-to-PDF is unavailable.",
                         );
                       } catch (failure) {
@@ -800,7 +800,9 @@ export default function Home() {
               <p>
                 Word output contains editable text and reconstructs the PDF
                 layout where possible. Complex designs can still need
-                adjustment. OCR and password removal are not included.
+                adjustment. English OCR creates editable Word text from scanned
+                PDFs, but their layout may need adjustment. Password removal is
+                not included.
               </p>
             </div>
           </div>

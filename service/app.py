@@ -50,7 +50,7 @@ async def protect(request: Request, call_next):
 
 @app.get("/health")
 def health():
-    return {"service": "paperfree", "status": "ok", "office": office_available(), "maxBytes": MAX_BYTES, "maxConcurrentJobs": max(1, int(os.getenv("MAX_CONCURRENT_JOBS", "3")))}
+    return {"service": "paperfree", "status": "ok", "office": office_available(), "ocr": bool(shutil.which(os.getenv("TESSERACT_PATH", "tesseract"))), "maxBytes": MAX_BYTES, "maxConcurrentJobs": max(1, int(os.getenv("MAX_CONCURRENT_JOBS", "3")))}
 
 
 async def run_worker(tool: str, source: Path, target: Path, mode: str):

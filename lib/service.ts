@@ -52,7 +52,12 @@ export async function checkService(endpoint: string, key: string) {
   const status = await response.json().catch(() => null);
   if (status?.service !== "paperfree" || status?.status !== "ok")
     throw new Error(`The service at ${base} is not a Paperfree converter.`);
-  return status as { service: "paperfree"; status: "ok"; office: boolean };
+  return status as {
+    service: "paperfree";
+    status: "ok";
+    office: boolean;
+    ocr?: boolean;
+  };
 }
 export async function convertOnService(
   tool: ServiceTool,

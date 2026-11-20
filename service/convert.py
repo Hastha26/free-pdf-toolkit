@@ -2,6 +2,7 @@
 from io import BytesIO
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 from zipfile import ZipFile, is_zipfile
@@ -84,7 +85,8 @@ def pdf_word(source, target):
     finally:
         pdf.close()
     if not selectable:
-        raise ValueError("No selectable text found. This PDF may be scanned; OCR is not included.")
+        scanned_pdf_word(source, target)
+        return
 
     converter = Converter(str(source))
     try:
@@ -106,6 +108,65 @@ def pdf_word(source, target):
                     changed = True
     if changed:
         document.save(target)
+
+
+def scanned_pdf_word(source, target):
+    """OCR a scanned PDF into actual Word paragraphs, without page screenshots."""
+    import csv
+    import pypdfium2 as pdfium
+    from docx import Document
+    from docx.shared import Pt
+
+    executable = os.getenv("TESSERACT_PATH", "tesseract")
+    if not shutil.which(executable):
+        raise ValueError("This PDF has no selectable text. OCR requires Tesseract on the converter service.")
+    document = Document()
+    pdf = pdfium.PdfDocument(source)
+    found = False
+    try:
+        for index in range(len(pdf)):
+            page = pdf[index]
+            try:
+                width, height = page.get_size()
+                scale = min(2.5, 2400 / max(width, height))
+                bitmap = page.render(scale=scale)
+                try:
+                    image = bitmap.to_pil()
+                    try:
+                        image_path = source.parent / f"ocr-page-{index}.png"
+                        image.save(image_path)
+                    finally:
+                        image.close()
+                finally:
+                    bitmap.close()
+            finally:
+                page.close()
+            try:
+                result = subprocess.run(
+                    [executable, str(image_path), "stdout", "-l", "eng", "tsv"],
+                    capture_output=True, text=True, timeout=60,
+                )
+            finally:
+                image_path.unlink(missing_ok=True)
+            if result.returncode:
+                raise ValueError("OCR could not read this scanned PDF.")
+            lines = {}
+            for item in csv.DictReader(result.stdout.splitlines(), delimiter="\t"):
+                word = (item.get("text") or "").strip()
+                if word and item.get("level") == "5":
+                    key = (item["block_num"], item["par_num"], item["line_num"])
+                    lines.setdefault(key, []).append(word)
+            if index:
+                document.add_page_break()
+            for words in lines.values():
+                paragraph = document.add_paragraph(" ".join(words))
+                paragraph.paragraph_format.space_after = Pt(2)
+                found = True
+    finally:
+        pdf.close()
+    if not found:
+        raise ValueError("OCR found no readable text in this PDF.")
+    document.save(target)
 
 
 def pdf_excel(source, target, mode):

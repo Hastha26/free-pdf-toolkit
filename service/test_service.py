@@ -90,13 +90,41 @@ def test_encrypted_pdf_is_rejected(pdf, tmp_path):
         convert('compress', encrypted, tmp_path / 'out.pdf')
 
 
-def test_scan_without_text_is_rejected_for_word(tmp_path):
+def test_blank_scan_has_clear_ocr_error(tmp_path):
     writer = PdfWriter()
     writer.add_blank_page(200, 300)
     blank = tmp_path / 'blank.pdf'
     writer.write(blank)
-    with pytest.raises(ValueError, match='No selectable text'):
+    with pytest.raises(ValueError, match='OCR'):
         convert('pdf-word', blank, tmp_path / 'out.docx')
+
+
+def test_scanned_pdf_produces_editable_word_text(tmp_path):
+    if not shutil.which(os.getenv('TESSERACT_PATH', 'tesseract')):
+        pytest.skip('Tesseract unavailable')
+    import pypdfium2 as pdfium
+    from reportlab.lib.utils import ImageReader
+
+    original = tmp_path / 'original.pdf'
+    canvas = Canvas(str(original))
+    canvas.setFont('Helvetica-Bold', 26)
+    canvas.drawString(54, 710, 'SCANNED INVOICE 4827')
+    canvas.save()
+    pdf = pdfium.PdfDocument(original)
+    page = pdf[0]
+    bitmap = page.render(scale=2)
+    image = bitmap.to_pil()
+    scanned = tmp_path / 'scanned.pdf'
+    canvas = Canvas(str(scanned))
+    canvas.drawImage(ImageReader(image), 0, 0, width=612, height=792)
+    canvas.save()
+    image.close(); bitmap.close(); page.close(); pdf.close()
+    assert not PdfReader(scanned).pages[0].extract_text()
+    output = tmp_path / 'ocr.docx'
+    convert('pdf-word', scanned, output)
+    document = Document(output)
+    assert 'SCANNED INVOICE 4827' in ' '.join(p.text for p in document.paragraphs)
+    assert not document.inline_shapes
 
 
 def test_macro_archive_is_rejected(tmp_path):

@@ -19,7 +19,7 @@ A free, open-source Next.js/TypeScript toolkit with **12 working tools**. Indepe
 | PowerPoint to PDF | Your service  | PPT, PPTX, ODP via LibreOffice.                                                 |
 | Excel to PDF      | Your service  | XLS, XLSX, ODS via LibreOffice.                                                 |
 
-PDF-to-Word reconstructs selectable text, tables, images, and layout as editable Word content where possible. PDF-to-Excel and PDF-to-PowerPoint are also not promises of perfect reconstruction. Fonts, complex layouts, tables, and scans need review. The editor adds annotations; it cannot rewrite existing text or securely redact it. Original page content stays intact; added annotations are raster overlays. Digital signatures can be invalidated. Keep originals.
+PDF-to-Word reconstructs selectable text, tables, images, and layout as editable Word content where possible. Scanned PDFs use English OCR to create editable text paragraphs; they do not retain exact page layout. PDF-to-Excel and PDF-to-PowerPoint are also not promises of perfect reconstruction. Fonts, complex layouts, tables, and scans need review. The editor adds annotations; it cannot rewrite existing text or securely redact it. Original page content stays intact; added annotations are raster overlays. Digital signatures can be invalidated. Keep originals.
 
 ## Start locally
 
@@ -43,7 +43,7 @@ Stop the converter with `docker compose down`. See [service setup and limits](se
 - Local tools and batch conversion have no fixed file-count limit. A batch of service outputs downloads as a ZIP. Up to three conversion jobs run at once by default; additional jobs wait. The editor handles one PDF at a time. Device memory, server memory, temporary storage, and per-file timeouts still impose practical bounds.
 - The editor uses Mozilla PDF.js assets hosted with the app. It does not execute PDF JavaScript. Password-protected PDFs are unsupported.
 - This app is not a malware scanner or sanitizer. Links, attachments, or active content may remain. Page copying can lose bookmarks, form behavior, tags, or other document-level information.
-- OCR, password removal, advanced lossy compression, and secure redaction are not included.
+- English OCR for scanned PDF-to-Word is included; password removal, advanced lossy compression, and secure redaction are not included.
 
 ## Checks and deployment
 

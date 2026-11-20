@@ -64,7 +64,7 @@ export const tools: {
     color: "blue",
     action: "Convert to Word",
     accept: ".pdf",
-    note: "Creates editable text and reconstructs page layout, tables, and images where possible. Complex designs may still need adjustment in Word. Scanned PDFs need OCR, which is not included.",
+    note: "Creates editable text and reconstructs page layout, tables, and images where possible. Scanned PDFs use English OCR to produce editable text; their layout may need adjustment in Word.",
     service: true,
   },
   {
